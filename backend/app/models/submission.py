@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -13,6 +14,7 @@ class Submission(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
+    user_identifier: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     input_type: Mapped[str] = mapped_column(String(4), nullable=False)   # "text" | "url"
     input_value: Mapped[str] = mapped_column(Text, nullable=False)
     verdict: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -20,5 +22,7 @@ class Submission(Base):
     harm_category: Mapped[str] = mapped_column(String(50), nullable=False)
     harm_severity: Mapped[str] = mapped_column(String(10), nullable=False)
     platform_likelihood: Mapped[str] = mapped_column(Text, nullable=False)       # JSON
-    demographic_vulnerability: Mapped[str] = mapped_column(Text, nullable=False)
+    demographic_vulnerability: Mapped[str] = mapped_column(Text, nullable=False) # JSON
     multilingual_summaries: Mapped[str] = mapped_column(Text, nullable=False)    # JSON
+    platform_tag: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)      # full result JSON

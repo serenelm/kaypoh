@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from urllib.parse import urlparse
 
@@ -153,8 +154,10 @@ _FACT_CHECK_TOOL = {
                 "description": "Fact-check summary in Singapore's four official languages",
             },
             "demographic_vulnerability": {
-                "type": "string",
-                "description": "Which demographic groups in Singapore are most vulnerable to this content and why",
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of up to 4 short demographic group names in Singapore most vulnerable to this content (e.g. 'Elderly Mandarin speakers', 'Migrant workers', 'General public'). Short names only — no sentences, no explanations.",
+                "maxItems": 4,
             },
         },
         "required": [
@@ -184,31 +187,21 @@ def _is_trusted_domain(url: str) -> bool:
 async def _fetch_url_content(url: str) -> str | None:
     """Fetch page content via Firecrawl. Returns markdown text or None on failure."""
     api_key = os.getenv("FIRECRAWL_API_KEY")
-    print(f"[firecrawl] API key present: {bool(api_key)} | key prefix: {api_key[:8] + '...' if api_key else 'MISSING'}")
-
     if not api_key:
-        print("[firecrawl] ERROR: FIRECRAWL_API_KEY not found in environment")
         return None
 
     def _scrape() -> str | None:
-        print(f"[firecrawl] Calling scrape_url for: {url}")
         app = V1FirecrawlApp(api_key=api_key)
         result = app.scrape_url(url, formats=["markdown"])
-        print(f"[firecrawl] Raw result type: {type(result)}")
-        print(f"[firecrawl] Raw result repr: {repr(result)[:500]}")
         # firecrawl-py >=1.0 returns a ScrapeResponse with a .markdown attribute
         markdown = getattr(result, "markdown", None)
         if not markdown and isinstance(result, dict):
             markdown = result.get("markdown")
-        print(f"[firecrawl] Extracted markdown length: {len(markdown) if markdown else 0}")
-        if markdown:
-            print(f"[firecrawl] Markdown preview: {markdown[:200]}")
         return markdown[:6000] if markdown else None
 
     try:
         return await asyncio.to_thread(_scrape)
-    except Exception as e:
-        print(f"[firecrawl] Exception during scrape: {type(e).__name__}: {e}")
+    except Exception:
         return None
 
 
@@ -256,4 +249,12 @@ async def run_fact_check(request: FactCheckRequest) -> FactCheckResponse:
         response = await stream.get_final_message()
 
     tool_use = next(b for b in response.content if b.type == "tool_use")
-    return FactCheckResponse(**tool_use.input)
+    data = dict(tool_use.input)
+    # Claude occasionally returns nested objects as JSON strings — parse them back
+    for field in ("multilingual_summaries", "platform_likelihood", "demographic_vulnerability"):
+        if isinstance(data.get(field), str):
+            try:
+                data[field] = json.loads(data[field])
+            except Exception:
+                pass
+    return FactCheckResponse(**data)

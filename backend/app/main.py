@@ -7,10 +7,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.factcheck import router as factcheck_router
+from app.api.routes.researcher import router as researcher_router
+from app.api.routes.submissions import router as submissions_router
+from app.api.routes.user import router as user_router
 from app.db import Base, engine
-import app.models.submission  # noqa: F401 — ensures model is registered with Base
+import app.models.claim  # noqa: F401
+import app.models.submission  # noqa: F401
+import app.models.vote  # noqa: F401
 
 
 @asynccontextmanager
@@ -29,8 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(factcheck_router)
+app.include_router(submissions_router)
 app.include_router(dashboard_router)
+app.include_router(user_router)
+app.include_router(researcher_router)
 
 
 @app.get("/health")

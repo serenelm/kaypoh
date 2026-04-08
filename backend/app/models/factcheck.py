@@ -44,4 +44,11 @@ class FactCheckResponse(BaseModel):
     ]
     consequence_mapping: str
     multilingual_summaries: MultilingualSummaries
-    demographic_vulnerability: str
+    demographic_vulnerability: list[str]
+
+
+class FactCheckResult(FactCheckResponse):
+    """HTTP response — extends FactCheckResponse with server-side metadata."""
+    submission_id: int
+    similar_claims_count: int = 0
+    similar_claims_topic: str | None = None
