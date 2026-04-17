@@ -2,10 +2,16 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Must run before importing modules that read env vars
 
+import logging
+import traceback
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+logging.basicConfig(level=logging.INFO, format="%(name)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("kaypoh")
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.dashboard import router as dashboard_router
@@ -41,6 +47,16 @@ app.include_router(submissions_router)
 app.include_router(dashboard_router)
 app.include_router(user_router)
 app.include_router(researcher_router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exc()
+    logger.error("Unhandled exception on %s %s\n%s", request.method, request.url.path, tb)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc) or "Internal server error", "type": type(exc).__name__},
+    )
 
 
 @app.get("/health")

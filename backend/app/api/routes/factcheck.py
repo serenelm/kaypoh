@@ -102,9 +102,9 @@ async def fact_check(
         confidence=result.confidence,
         harm_category=result.harm_category,
         harm_severity=result.harm_severity,
-        platform_likelihood=json.dumps(result.platform_likelihood.model_dump()),
+        platform_likelihood=json.dumps(result.platform_likelihood),
         demographic_vulnerability=json.dumps(result.demographic_vulnerability),
-        multilingual_summaries=json.dumps(result.multilingual_summaries.model_dump()),
+        multilingual_summaries=json.dumps(result.multilingual_summaries),
         result_json=result.model_dump_json(),
     )
     db.add(sub)

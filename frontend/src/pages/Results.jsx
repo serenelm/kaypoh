@@ -21,13 +21,13 @@ function splitSentences(text) {
     .filter(Boolean);
 }
 
-/** Renders inline **bold** markers as <strong> elements. */
+/** Renders inline **bold** markers as <strong> elements and strips orphaned asterisks. */
 function renderInline(text) {
   const parts = text.split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) =>
     i % 2 === 1
       ? <strong key={i} className="font-semibold text-gray-900">{part}</strong>
-      : part
+      : part.replace(/\*/g, "")  // Strip any remaining orphaned asterisks
   );
 }
 
@@ -639,27 +639,34 @@ export default function Results() {
         </Card>
 
         {/* ── Multilingual summaries ── */}
-        <Card>
-          <SectionTitle>Summary in Singapore's languages</SectionTitle>
-          <div className="flex mt-4 border-b border-gray-100">
-            {LANG_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setLangTab(tab.key)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                  langTab === tab.key
-                    ? "border-kaypoh text-kaypoh"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed mt-4">
-            {result.multilingual_summaries[langTab]}
-          </p>
-        </Card>
+        {result.multilingual_summaries && Object.keys(result.multilingual_summaries).length > 0 ? (
+          <Card>
+            <SectionTitle>Summary in Singapore's languages</SectionTitle>
+            <div className="flex mt-4 border-b border-gray-100">
+              {LANG_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setLangTab(tab.key)}
+                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                    langTab === tab.key
+                      ? "border-kaypoh text-kaypoh"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed mt-4">
+              {result.multilingual_summaries[langTab] || "Not available in this language"}
+            </p>
+          </Card>
+        ) : (
+          <Card>
+            <SectionTitle>Summary in Singapore's languages</SectionTitle>
+            <p className="text-sm text-gray-500 italic mt-4">Language summaries could not be generated. Check backend logs for details.</p>
+          </Card>
+        )}
       </main>
     </div>
   );

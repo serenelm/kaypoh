@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from urllib.parse import urlparse
 
@@ -7,6 +8,8 @@ from anthropic import AsyncAnthropic
 from firecrawl import V1FirecrawlApp
 
 from app.models.factcheck import FactCheckRequest, FactCheckResponse
+
+logger = logging.getLogger(__name__)
 
 _TRUSTED_SG_DOMAINS = {
     "straitstimes.com",
@@ -60,7 +63,28 @@ Your role is to critically analyse claims or content and provide a structured, e
 
 Singapore's four official languages: English, Chinese (Simplified Mandarin), Malay (Bahasa Melayu), Tamil.
 
-Be thorough, evidence-based, and culturally sensitive. Assess claims against known Singapore official sources and news records."""
+---
+
+**VERDICT CLASSIFICATION RULES — follow these strictly:**
+
+Use **misleading** when:
+- The content contains claims that contradict known facts, official Singapore government statements, or reporting from trusted Singapore outlets
+- The content matches known debunked patterns (e.g. fake lockdown announcements, fake government directives, fabricated WhatsApp chain messages, too-good-to-be-true offers)
+- Multiple red flags are present: urgency language, unverified sources, implausible claims, contradiction with official records
+- High confidence that the claim is false, even if you cannot confirm the exact event — if the pattern clearly indicates fabrication, use misleading
+- RULE: High confidence + multiple red flags = **misleading**, not unverified
+
+Use **unverified** ONLY when:
+- The claim is about a genuinely future event or real-time situation where no reference points exist
+- The claim comes from anonymous sources with no red flags and no contradicting evidence
+- The topic is too niche or obscure to cross-reference against any known source
+- You have genuine uncertainty with no strong indicators in either direction
+
+Use **accurate** when:
+- The claim is confirmed by official Singapore government sources, CNA, Straits Times, or equivalent trusted outlets
+- The content originates from a verified trusted domain and no contradicting information exists
+
+Do NOT use unverified as a safe fallback when red flags and contradictions clearly point to misleading content. Unverified means genuinely unknowable — not just unconfirmed."""
 
 _FACT_CHECK_TOOL = {
     "name": "submit_fact_check",
@@ -249,12 +273,13 @@ async def run_fact_check(request: FactCheckRequest) -> FactCheckResponse:
         response = await stream.get_final_message()
 
     tool_use = next(b for b in response.content if b.type == "tool_use")
-    data = dict(tool_use.input)
-    # Claude occasionally returns nested objects as JSON strings — parse them back
-    for field in ("multilingual_summaries", "platform_likelihood", "demographic_vulnerability"):
-        if isinstance(data.get(field), str):
-            try:
-                data[field] = json.loads(data[field])
-            except Exception:
-                pass
-    return FactCheckResponse(**data)
+
+    # Log the raw Claude response for debugging
+    logger.info("Claude multilingual_summaries: %s", json.dumps(tool_use.input.get("multilingual_summaries", {}), indent=2, ensure_ascii=False))
+    logger.debug("Full Claude tool input: %s", json.dumps(tool_use.input, indent=2, ensure_ascii=False))
+
+    try:
+        return FactCheckResponse(**tool_use.input)
+    except Exception as e:
+        logger.error("Failed to parse FactCheckResponse from Claude: %s\nInput: %s", str(e), json.dumps(tool_use.input, indent=2, ensure_ascii=False))
+        raise
