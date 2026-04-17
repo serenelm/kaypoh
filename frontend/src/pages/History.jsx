@@ -33,6 +33,7 @@ export default function History() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!user) { navigate("/login"); return; }
     fetch("/api/submission/history", {
       headers: { ...authHeader(user) },
     })
@@ -43,7 +44,7 @@ export default function History() {
       .then(setRows)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, navigate]);
 
   function replayResult(row) {
     if (!row.result_json) return;

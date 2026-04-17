@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Nav from "../components/Nav";
 import { useAuth, authHeader } from "../context/auth";
 
@@ -40,17 +41,19 @@ function timeAgo(iso) {
 
 export default function ResearcherDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!user) { navigate("/login"); return; }
     fetch("/api/researcher/overview", { headers: authHeader(user) })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setData)
       .catch(() => setError("Failed to load researcher data"))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, navigate]);
 
   if (loading) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">
